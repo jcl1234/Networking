@@ -18,12 +18,14 @@ function serialize.pack(t)
 
 		--Pair
 		if valStr then
+			local keyStr = k.."="
 			local pairStr = valStr
-			if type(k) == "string" then
-				pairStr = k.."="..valStr
+
+			if type(k) == "number" then
+				keyStr = "["..k.."]="
 			end
 
-			tStr = tStr..pairStr..","
+			tStr = tStr..keyStr..valStr..","
 		end
 	end
 	local len = #tStr

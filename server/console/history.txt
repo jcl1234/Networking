@@ -1,0 +1,10 @@
+net.tickRate = 10
+net.tickRate = 20
+net.tickRate = 128
+net.tickRate = 1
+net.tickRate = 8
+net.timeout = 10
+net.timeout = 0
+net.timeout = 100
+net.timeout = 1000
+net.timeout = 0
