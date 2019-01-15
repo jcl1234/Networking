@@ -22,18 +22,20 @@ function love.update(dt)
 	net.update(dt)
 	--Controls
 	if localPlayer then
+		local ply = localPlayer
+		ply.xDesDir, ply.yDesDir = 0, 0
 		if isDown("a") then
-			localPlayer.x = localPlayer.x - localPlayer.speed
+			ply:move(-1)
 		elseif isDown("d") then
-			localPlayer.x = localPlayer.x + localPlayer.speed
+			ply:move(1)
 		end
 
 		if isDown("w") then
-			localPlayer.y = localPlayer.y - localPlayer.speed
+			ply:move(0, -1)
 		elseif isDown("s") then
-			localPlayer.y = localPlayer.y + localPlayer.speed
+			ply:move(0, 1)
 		end
-		net.send({x=localPlayer.x, y=localPlayer.y})
+		net.send(ply:netInfo())
 	end
 end
 -----------------------------------

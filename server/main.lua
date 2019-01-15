@@ -8,14 +8,14 @@ net = require 'net'
 
 local positions = {}
 function net.receive(t, client)
-	positions[client.id] = positions[client.id] or {}
-	positions[client.id].x = t.x
-	positions[client.id].y = t.y
+	positions[client.id] = t
 end
 
 
 
 function love.load()
+	love.window.setMode(400,300)
+	love.window.setTitle("server")
 	console.Show()
 	net.create("192.168.0.72", "2212")
 end
