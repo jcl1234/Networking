@@ -19,6 +19,7 @@ net.tickRate = 8
 	id = __id,
 	disconnect = __disconnect,
 	connect = __connect,
+	force quit = __forceQuit,
 ]]
 -------------------
 local CLIENT = false
@@ -43,6 +44,14 @@ function client.new(peer)
 	return cl
 end
 
+function client.setId(cl, id)
+	if cl and id then
+		net.clients[cl.id] = nil
+		cl.id = id
+		net.clients[id] = cl
+	end
+end
+
 function client.get(peer)
 	for k, client in pairs(net.clients) do
 		if peer == client.peer then return client end
@@ -60,6 +69,9 @@ function client.disconnect(id)
 	local cl = net.clients[id]
 	if cl and net.onDisconnect then
 		net.onDisconnect(cl)
+	end
+	if CLIENT and id == net.localClient.id then
+		net.localClient.peer:disconnect()
 	end
 	net.clients[id] = nil
 	if SERVER then
@@ -95,14 +107,22 @@ local function toIp(num, port)
 	return num..":"..port
 end
 --START------------------
+net.localIp, net.localPort = "localhost", "80"
 function net.connect(ip, port)
+	ip , port = net.localIp, net.localPort
 	net.host = enet.host_create()
 	net.server = net.host:connect(toIp(ip, port))
 	CLIENT = true
 	return net.server, net.host
 end
 
+function net.disconnect()
+
+end
+
+--Server
 function net.create(ip, port)
+	ip , port = net.localIp, net.localPort
 	net.host = enet.host_create(toIp(ip, port))
 	net.server = net.host
 	SERVER = true
@@ -135,11 +155,9 @@ function net.receive(t, client)
 end
 
 function net.onConnect(client)
-	print(client.id, "connected")
 end
 
 function net.onDisconnect(client)
-	print(client.id, "disconnected")
 end
 
 --Client only
@@ -160,7 +178,7 @@ function net.update(dt)
 				--Receive id from server and create local client
 				if data.__id then
 					net.localClient = client.new(event.peer)
-					net.localClient.id = data.__id
+					client.setId(net.localClient, data.__id)
 					if net.onJoin then net.onJoin(data.__id) end
 				end
 				--Create new client from connected player
@@ -168,8 +186,9 @@ function net.update(dt)
 					for k, id in pairs(data.__connect) do
 						if not (net.localClient and net.localClient.id == id) then
 							local cl = client.new()
-							cl.id = id
+							client.setId(cl, id)
 							if net.onConnect then net.onConnect(cl) end
+							print("client "..cl.id.." connected")
 						end
 					end
 				end
@@ -178,6 +197,7 @@ function net.update(dt)
 					for k, id in pairs(data.__disconnect) do
 						local cl = net.clients[id]
 						client.disconnect(id)
+						print("client "..id.." disconnected")
 					end
 				end
 
@@ -205,7 +225,7 @@ function net.update(dt)
 			for k, cl in pairs(net.clients) do
 				if cl ~= newClient then
 					net.send({__connect={newClient.id}}, cl.id)
-					table.insert(connectedIds, cl.id)
+					connectedIds[cl.id] = cl.id
 				end
 			end
 			--Send current client ids to new client
@@ -214,8 +234,10 @@ function net.update(dt)
 			end
 
 			if net.onConnect then net.onConnect(newClient) end
+			print("client "..newClient.id.." connected")
 		elseif event.type == "disconnect" and SERVER then
 			if cl then
+				print("client "..cl.id.." disconnected")
 				client.disconnect(cl.id)
 			end
 		end
