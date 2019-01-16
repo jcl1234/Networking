@@ -137,7 +137,10 @@ end
 
 --Server
 function net.create(ip, port)
-	ip , port = net.localIp, net.localPort
+	if not ip and not port then
+		ip , port = net.localIp, net.localPort
+	end
+	port = port or net.defaultPort
 	net.host = enet.host_create(toIp(ip, port))
 	net.server = net.host
 	SERVER = true
