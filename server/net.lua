@@ -1,20 +1,12 @@
 local net = {}
 net.host = nil
-net.sendData = {}
 net.timeout = 0
-
-net.lastSend = 0
-net.lastReceive = 0
-
---Time without communication until disconnect
-net.maxTime = 10
 
 net.localClient = nil
 net.server = nil
 net.clients = {}
 
---Packages sent/received per second
-net.tickRate = 16
+net.showMsgs = true
 
 --[[ Server messages
 	id = __id,
@@ -27,9 +19,11 @@ local SERVER = false
 
 --Client class
 local client = {}
+client.mt = {__index = client}
 function client.new(peer)
-	local cl = {}
+	local cl = {}	
 	cl.peer = peer
+	cl.client = true
 
 	local maxId = 0
 	--Get max id
@@ -38,69 +32,49 @@ function client.new(peer)
 	end
 	cl.id = maxId + 1
 
-	cl.lastSend = 0
 
 	net.clients[cl.id] = cl
+
+	setmetatable(cl, client.mt)
+
 	return cl
 end
 
-function client.setId(cl, id)
-	if cl and id then
-		net.clients[cl.id] = nil
-		cl.id = id
-		net.clients[id] = cl
+function client:setId(id)
+	if id then
+		net.clients[self.id] = nil
+		self.id = id
+		net.clients[id] = self
 	end
 end
 
-function client.get(peer)
-	for k, client in pairs(net.clients) do
-		if peer == client.peer then return client end
-	end
+function client:send(data)
+	self.peer:send(data)
 end
 
-function client.send(id, data)
-	local cl = net.clients[id]
-	if cl then
-		cl.peer:send(data)
+function client:disconnect()
+	if  net.onDisconnect then
+		net.onDisconnect(self)
 	end
-end
-
-function client.disconnect(id)
-	local cl = net.clients[id]
-	if cl and net.onDisconnect then
-		net.onDisconnect(cl)
-	end
-	if CLIENT and id == net.localClient.id then
+	if CLIENT and self.id == net.localClient.id then
 		net.localClient.peer:disconnect()
 	end
-	net.clients[id] = nil
+	net.clients[self.id] = nil
 	if SERVER then
-		cl.peer:disconnect()
-		net.send({__disconnect={id}})
+		self.peer:disconnect()
+		net.send({__disconnect={self.id}})
 	end
 end
 
---PUSH TO SERVER/CLIENTS
-local function push()
-	if CLIENT then
-		net.server:send(s.pack(net.sendData))
-	elseif SERVER then
-		for k, cl in pairs(net.clients) do
-			local pushTab = net.sendData["all"] or {}
-			--Overwrite pushTab if special client message
-			if net.sendData[cl.id] then
-				pushTab = copy(pushTab)
-				for k, v in pairs(net.sendData[cl.id]) do
-					pushTab[k] = v
-				end
-			end
-			if pushTab ~= {} then
-				client.send(cl.id, s.pack(pushTab))
-			end
-		end
+
+function client.get(id)
+	return net.clients[id]
+end
+
+function client.sendAll(t)
+	for k, cl in pairs(net.clients) do
+		cl:send(t)
 	end
-	net.sendData = {}
-	net.lastSend = 0
 end
 
 local function toIp(num, port)
@@ -126,7 +100,7 @@ function net.disconnect()
 	if not CLIENT then return end
 	if net.server then
 		for k, cl in pairs(net.clients) do
-			client.disconnect(k)
+			cl:disconnect()
 		end
 		net.server:disconnect()
 		net.localClient = nil
@@ -149,21 +123,19 @@ end
 --BOTH--------------------
 --Add send data to be sent, blank id to broadcast to all clients
 function net.send(t, id)
-	if CLIENT then
-		for k, v in pairs(t) do
-			net.sendData[k] = v
-		end
-		net.sendData["id"]=net.id
+	if not t or t == {} then return end
+	local datStr = s.pack(t)
+	if CLIENT and net.server then
+		net.server:send(datStr)
 	elseif SERVER then
-		if not id then id = "all" end
-		--Overwrite existing pushtab
-		local pushTab = net.sendData[id]
-		if pushTab then
-			for k, v in pairs(t) do
-				pushTab[k] = v
+		if id then
+			if type(id) == "number" then
+				client.get(id):send(datStr)
+			elseif type(id) == "table" and id.client then
+				id:send(datStr)
 			end
 		else
-			net.sendData[id] = t
+			client.sendAll(datStr)
 		end
 	end
 end
@@ -187,7 +159,15 @@ function net.update(dt)
 	local timeout = (SERVER and net.timeout) or 0
 	local event = net.host:service(timeout)
 	while event do
-		local cl = client.get(event.peer)
+		--Get client that sent message 
+
+		local cl 
+		if SERVER then
+			for k, client in pairs(net.clients) do
+				if event.peer == client.peer then cl = client end
+			end
+		end
+
 		if event.type == "receive" then
 			local data = s.unpack(event.data)
 			-- print("Got message: ", event.data, event.peer)
@@ -195,7 +175,7 @@ function net.update(dt)
 				--Receive id from server and create local client
 				if data.__id then
 					net.localClient = client.new(event.peer)
-					client.setId(net.localClient, data.__id)
+					net.localClient:setId(data.__id)
 					if net.onJoin then net.onJoin(data.__id) end
 				end
 				--Create new client from connected player
@@ -203,7 +183,7 @@ function net.update(dt)
 					for k, id in pairs(data.__connect) do
 						if not (net.localClient and net.localClient.id == id) then
 							local cl = client.new()
-							client.setId(cl, id)
+							cl:setId(id)
 							if net.onConnect then net.onConnect(cl) end
 							print("client "..cl.id.." connected")
 						end
@@ -213,23 +193,16 @@ function net.update(dt)
 				if data.__disconnect then
 					for k, id in pairs(data.__disconnect) do
 						local cl = net.clients[id]
-						client.disconnect(id)
+						if cl then
+							cl:disconnect()
+						end
 						print("client "..id.." disconnected")
 					end
 				end
-				net.lastReceive = 0
 			end
 			if net.receive then net.receive(data, cl or {}) end
 
-			--Update timeout
-			if SERVER then
-				cl.lastSend = 0
-			end
-
-			--If client then push all data
-			if CLIENT then
-				push()
-			end
+			if net.showMsgs then print(event.data, "" or (cl and "client #"..cl.id)) end
 
 		elseif event.type == "connect" and SERVER then
 			--Create client on server
@@ -255,33 +228,11 @@ function net.update(dt)
 		elseif event.type == "disconnect" and SERVER then
 			if cl then
 				print("client "..cl.id.." disconnected")
-				client.disconnect(cl.id)
+				cl:disconnect()
 			end
 		end
 		event = net.host:service()
 	end
-	if CLIENT then
-		if net.lastReceive >= net.maxTime then
-			net.disconnect()
-		end
-		net.lastReceive = net.lastReceive + dt
-	end
-
-	if SERVER then
-		--Update client timeouts and disconnect if no pings
-		for k, cl in pairs(net.clients) do
-			if cl.lastSend >= net.maxTime then
-				client.disconnect(cl.id)
-			end
-			cl.lastSend = cl.lastSend + dt
-		end
-		--Push packets to clients
-		net.lastSend = net.lastSend + dt
-		if net.lastSend >= 1/net.tickRate then
-			push()
-		end
-	end
-
 end
 
 return net
