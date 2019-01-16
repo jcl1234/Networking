@@ -110,7 +110,6 @@ end
 net.localIp, net.localPort = "localhost", "80"
 net.defaultPort = "2212"
 function net.connect(ip, port)
-	net.disconnect()
 	if not ip and not port then
 		ip , port = net.localIp, net.localPort
 	end
