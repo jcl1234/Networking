@@ -18,6 +18,7 @@ function love.load()
 	love.window.setTitle("server")
 	console.Show()
 	net.create("192.168.0.72", "2212")
+	print("started server with a tickrate of "..net.tickRate)
 end
 
 function love.update(dt)

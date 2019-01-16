@@ -14,6 +14,7 @@ local function getDifs(startT, endT)
 end
 
 function tween.new(time, startT, endT)
+	if time <= 0 then return end
 	local t = {}
 	t.time = time
 	t.timeLeft = time
