@@ -4,6 +4,7 @@ net.sendData = {}
 net.timeout = 0
 
 net.lastSend = 0
+net.lastReceive = 0
 
 --Time without communication until disconnect
 net.maxTime = 10
@@ -13,13 +14,12 @@ net.server = nil
 net.clients = {}
 
 --Packages sent/received per second
-net.tickRate = 8
+net.tickRate = 16
 
 --[[ Server messages
 	id = __id,
 	disconnect = __disconnect,
 	connect = __connect,
-	force quit = __forceQuit,
 ]]
 -------------------
 local CLIENT = false
@@ -108,16 +108,31 @@ local function toIp(num, port)
 end
 --START------------------
 net.localIp, net.localPort = "localhost", "80"
+net.defaultPort = "2212"
 function net.connect(ip, port)
-	ip , port = net.localIp, net.localPort
-	net.host = enet.host_create()
+	net.disconnect()
+	if not ip and not port then
+		ip , port = net.localIp, net.localPort
+	end
+	port = port or net.defaultPort
+	if not net.host then
+		net.host = enet.host_create()
+	end
 	net.server = net.host:connect(toIp(ip, port))
 	CLIENT = true
 	return net.server, net.host
 end
 
 function net.disconnect()
-
+	if not CLIENT then return end
+	if net.server then
+		for k, cl in pairs(net.clients) do
+			client.disconnect(k)
+		end
+		net.server:disconnect()
+		net.localClient = nil
+		net.server = nil
+	end
 end
 
 --Server
@@ -130,7 +145,7 @@ function net.create(ip, port)
 end
 
 --BOTH--------------------
---Add send data to be sent, no id to broadcast to all clients
+--Add send data to be sent, blank id to broadcast to all clients
 function net.send(t, id)
 	if CLIENT then
 		for k, v in pairs(t) do
@@ -200,7 +215,7 @@ function net.update(dt)
 						print("client "..id.." disconnected")
 					end
 				end
-
+				net.lastReceive = 0
 			end
 			if net.receive then net.receive(data, cl or {}) end
 
@@ -242,6 +257,12 @@ function net.update(dt)
 			end
 		end
 		event = net.host:service()
+	end
+	if CLIENT then
+		if net.lastReceive >= net.maxTime then
+			net.disconnect()
+		end
+		net.lastReceive = net.lastReceive + dt
 	end
 
 	if SERVER then

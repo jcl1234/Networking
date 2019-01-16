@@ -13,11 +13,11 @@ local Player = class({
 		self.players[self.id] = self
 	end,
 
-	remove = function(self)
+	disconnect = function(self)
 		self.players[self.id] = nil
 	end,
 
-	--Info to be networked
+	--Info to be networked every tick
 	netInfo = function(self)
 		local t = {}
 		t.pos = self.pos

@@ -1,6 +1,7 @@
 require("server.console.console")
 enet = require("enet")
 --------------------------
+require 'conf'
 require 'server.class'
 require 'server.util'
 Player = require 'player'
@@ -9,7 +10,9 @@ s = require 'server.serialize'
 net = require 'server.net'
 ------------------------------
 local isDown = love.keyboard.isDown
-localPlayer = nil
+function localPlayer()
+	if net.localClient then return Player.players[net.localClient.id] end
+end
 
 local function connect()
 	net.connect("192.168.0.72", "2212")
@@ -24,8 +27,8 @@ function love.update(dt)
 	net.update(dt)
 	tween.update(dt)
 	--Controls
-	if localPlayer and not console.is_open then
-		local ply = localPlayer
+	if localPlayer() and not console.is_open then
+		local ply = localPlayer()
 		ply.xDesDir, ply.yDesDir = 0, 0
 		if isDown("a") then
 			ply:move(-1)
@@ -48,9 +51,13 @@ function net.receive(t)
 	if t.positions then
 		for k,v in pairs(t.positions) do
 			local ply = Player:getById(k)
-			if ply and ply.id ~= localPlayer.id then
+			if ply and ply.id ~= localPlayer().id then
 				if v.pos and v.pos.x and v.pos.y then
-					tween.new(1/net.tickRate, ply.pos,  v.pos)
+					if conf.tween then
+						tween.new(1/net.tickRate, ply.pos,  v.pos)
+					else
+						ply.pos = v.pos
+					end
 				end
 			end
 		end
@@ -63,12 +70,12 @@ function net.onConnect(client)
 end
 --Delete player
 function net.onDisconnect(client)
-	Player:getById(client.id):remove()
+	Player:getById(client.id):disconnect()
 end
 
 --Create local player on server join
 function net.onJoin(id)
-	localPlayer = Player:new(100, 100, id)
+	Player:new(100, 100, id)
 end
 
 love.graphics.setBackgroundColor(.3,.3,.4)
