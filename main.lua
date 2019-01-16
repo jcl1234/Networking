@@ -4,24 +4,27 @@ enet = require("enet")
 require 'server.class'
 require 'server.util'
 Player = require 'player'
+tween = require 'tween'
 s = require 'server.serialize'
 net = require 'server.net'
 ------------------------------
 local isDown = love.keyboard.isDown
-local localPlayer = nil
+localPlayer = nil
 
 local function connect()
 	net.connect("192.168.0.72", "2212")
 end
 
 function love.load()
+	love.window.setTitle("client")
 	connect()
 end
 
 function love.update(dt)
 	net.update(dt)
+	tween.update(dt)
 	--Controls
-	if localPlayer then
+	if localPlayer and not console.is_open then
 		local ply = localPlayer
 		ply.xDesDir, ply.yDesDir = 0, 0
 		if isDown("a") then
@@ -46,9 +49,8 @@ function net.receive(t)
 		for k,v in pairs(t.positions) do
 			local ply = Player:getById(k)
 			if ply and ply.id ~= localPlayer.id then
-				if v.x and v.y then
-					ply.x = v.x
-					ply.y = v.y
+				if v.pos and v.pos.x and v.pos.y then
+					tween.new(1/net.tickRate, ply.pos,  v.pos)
 				end
 			end
 		end
@@ -75,7 +77,7 @@ function love.draw()
 	--Draw players
 	love.graphics.setColor(playerColor)
 	for k, player in pairs(Player.players) do
-		love.graphics.rectangle("fill", player.x, player.y, player.width, player.height)
+		love.graphics.rectangle("fill", player.pos.x, player.pos.y, player.width, player.height)
 	end
 end
 

@@ -4,8 +4,7 @@ local Player = class({
 		self.width = 10
 		self.height = 10
 
-		self.x = x
-		self.y = y
+		self.pos = {x=x, y=y}
 
 		self.speed = 3
 
@@ -21,8 +20,7 @@ local Player = class({
 	--Info to be networked
 	netInfo = function(self)
 		local t = {}
-		t.x = self.x
-		t.y = self.y
+		t.pos = self.pos
 
 		return t
 	end,
@@ -32,15 +30,15 @@ local Player = class({
 		speed = speed or self.speed
 		yDir = yDir or 0
 		if xDir == -1 then
-			self.x = self.x - self.speed
+			self.pos.x = self.pos.x - self.speed
 		elseif xDir == 1 then
-			self.x = self.x + self.speed
+			self.pos.x = self.pos.x + self.speed
 		end
 
 		if yDir == -1 then
-			self.y = self.y - self.speed
+			self.pos.y = self.pos.y - self.speed
 		elseif yDir == 1 then
-			self.y = self.y + self.speed
+			self.pos.y = self.pos.y + self.speed
 		end
 	end,
 
