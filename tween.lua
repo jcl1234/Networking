@@ -31,7 +31,12 @@ function tween.new(time, startT, endT)
 	t.difs = getDifs(t.vals, t.endVals)
 
 
-
+	--Delete anything tweening the current table
+	for k, tw in pairs(tween.tweens) do
+		if tw.vals == t.vals then
+			table.remove(tween.tweens, k)
+		end
+	end
 	table.insert(tween.tweens, t)
 	return t
 end

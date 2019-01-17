@@ -83,7 +83,7 @@ local function toIp(num, port)
 	return num..":"..port
 end
 --START------------------
-net.localIp, net.localPort = "localhost", "80"
+net.localIp, net.localPort = "127.0.0.1", "80"
 net.defaultPort = "2212"
 function net.connect(ip, port)
 	if not ip and not port then

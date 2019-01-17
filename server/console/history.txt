@@ -8,3 +8,4 @@ net.timeout = 0
 net.timeout = 100
 net.timeout = 1000
 net.timeout = 0
+print(net.host:get_socket_address())
