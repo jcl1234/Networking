@@ -4,15 +4,18 @@ enet = require("enet")
 require 'conf'
 require 'server.class'
 require 'server.util'
+Player = require 'player'
 tween = require 'tween'
 s = require 'server.serialize'
 net = require 'server.net'
 ------------------------------
+local isDown = love.keyboard.isDown
+function localPlayer()
+	if net.localClient then return Player.players[net.localClient.id] end
+end
+
 function connect()
-	love.window.setMode(400,300)
-	console.Show()
-	net.connect()
-	-- net.connect("192.168.0.72", "2212")
+	net.connect("192.168.0.72", "2212")
 end
 
 function love.load()
@@ -22,25 +25,67 @@ end
 
 function love.update(dt)
 	net.update(dt)
+	tween.update(dt)
+	--Controls
+	if localPlayer() and not console.is_open then
+		local ply = localPlayer()
+		ply.xDesDir, ply.yDesDir = 0, 0
+		if isDown("a") then
+			ply:move(-1)
+		elseif isDown("d") then
+			ply:move(1)
+		end
+
+		if isDown("w") then
+			ply:move(0, -1)
+		elseif isDown("s") then
+			ply:move(0, 1)
+		end
+		net.send(ply:netInfo())
+	end
 end
 -----------------------------------
 --Update player positions
 function net.receive(t)
+	--Positions
+	if t.positions then
+		for k,v in pairs(t.positions) do
+			local ply = Player:getById(k)
+			if ply and ply.id ~= localPlayer().id then
+				if v.pos and v.pos.x and v.pos.y then
+					if conf.tween then
+						tween.new(1/net.tickRate, ply.pos,  v.pos)
+					else
+						ply.pos = v.pos
+					end
+				end
+			end
+		end
+	end
 end
 
 --Create player
 function net.onConnect(client)
+	Player:new(100, 100, client.id)
 end
 --Delete player
 function net.onDisconnect(client)
+	Player:getById(client.id):disconnect()
 end
 
 --Create local player on server join
 function net.onJoin(id)
+	Player:new(100, 100, id)
 end
 
-love.graphics.setBackgroundColor(.8,.3,.3)
+love.graphics.setBackgroundColor(.3,.3,.4)
+local playerColor = {1,1,1}
 function love.draw()
+	--Draw players
+	love.graphics.setColor(playerColor)
+	for k, player in pairs(Player.players) do
+		love.graphics.rectangle("fill", player.pos.x, player.pos.y, player.width, player.height)
+	end
 end
 
 

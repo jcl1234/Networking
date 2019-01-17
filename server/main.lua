@@ -3,28 +3,27 @@ enet = require("enet")
 --------------------------
 s = require 'serialize'
 require 'util'
-require 'class'
 net = require 'net'
 --------------------------
-function create()
-	net.create()
-	-- net.create("192.168.0.72", "2212")
+
+local positions = {}
+function net.receive(t, client)
+	positions[client.id] = t
 end
 
-function net.onConnect(client)
-
-end
 
 
 function love.load()
 	love.window.setMode(400,300)
 	love.window.setTitle("server")
 	console.Show()
-	create()
+	net.create("192.168.0.72", "2212")
+	print("started server with a tickrate of "..net.tickRate)
 end
 
 function love.update(dt)
 	net.update(dt)
+	net.send({positions=positions})
 end
 
 
