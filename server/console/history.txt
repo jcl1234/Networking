@@ -9,3 +9,4 @@ net.timeout = 100
 net.timeout = 1000
 net.timeout = 0
 net.tickRate = 14
+net.tickRate = 12

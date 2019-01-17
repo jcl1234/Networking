@@ -17,10 +17,10 @@ function tween.new(time, startT, endT)
 	if time <= 0 then return end
 	local t = {}
 	t.time = time
-	t.timeLeft = time
+	t.timeLeft = time*60
 
 	t.vals = startT
-	t.origVals = copy(t.vals)
+	t.origVals = {}
 	t.endVals = endT
 
 	--Copy original values
@@ -43,16 +43,15 @@ end
 
 function tween.update(dt)
 	for k, tw in pairs(tween.tweens) do
-		tw.timeLeft = tw.timeLeft - dt
+		tw.timeLeft = tw.timeLeft - 1
 		for k, v in pairs(tw.vals) do
 			if type(v) == "number" then
-				if tw.timeLeft <= 0 then
-					tw.vals[k] = tw.endVals[k]
-				else
-					local dif = tw.difs[k]
-					local newVal = tw.vals[k] + (dif/tw.time)*dt
-					tw.vals[k] = newVal
-				end
+				local dif = tw.difs[k]
+				local newVal = tw.vals[k] + (dif/tw.time)/60
+				tw.vals[k] = newVal
+			end
+			if tw.timeLeft <= 0 then
+				tw.vals[k] = tw.endVals[k]
 			end
 		end
 		if tw.timeLeft <= 0 then

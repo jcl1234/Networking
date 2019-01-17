@@ -4,7 +4,9 @@ local Player = class({
 		self.width = 10
 		self.height = 10
 
+		self.realPos = {x=x, y=y}
 		self.pos = {x=x, y=y}
+		self.positions = {}
 
 		self.speed = 3
 
