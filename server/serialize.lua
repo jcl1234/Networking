@@ -3,6 +3,7 @@ local serialize = {}
 --Pack table into string
 function serialize.pack(t)
 	local tStr = "{"
+	local lastNumKey = 0
 	for k, v in pairs(t) do
 		--Val
 		local valType = type(v)
@@ -19,10 +20,15 @@ function serialize.pack(t)
 		--Pair
 		if valStr then
 			local keyStr = k.."="
-			local pairStr = valStr
 
 			if type(k) == "number" then
-				keyStr = "["..k.."]="
+				if k == lastNumKey + 1 then
+					keyStr = ""
+					lastNumKey = k
+				else
+					keyStr = "["..k.."]="
+					lastNumKey = k
+				end
 			end
 
 			tStr = tStr..keyStr..valStr..","

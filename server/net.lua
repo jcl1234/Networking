@@ -1,3 +1,5 @@
+-- version 0.1
+
 local net = {}
 net.host = nil
 net.timeout = 0
